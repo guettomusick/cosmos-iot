@@ -13,9 +13,13 @@ BUILD_FLAGS := -ldflags '$(ldflags)'
 
 all: install
 
+build: go.sum
+		go build -mod=readonly $(BUILD_FLAGS) ./cmd/qonicod
+		go build -mod=readonly $(BUILD_FLAGS) ./cmd/qonicocli
+
 install: go.sum
-		go install $(BUILD_FLAGS) ./cmd/qonicod
-		go install $(BUILD_FLAGS) ./cmd/qonicocli
+		go install -mod=readonly $(BUILD_FLAGS) ./cmd/qonicod
+		go install -mod=readonly $(BUILD_FLAGS) ./cmd/qonicocli
 
 go.sum: go.mod
 		@echo "--> Ensure dependencies have not been modified"
