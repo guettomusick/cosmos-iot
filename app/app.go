@@ -34,18 +34,14 @@ import (
   upgradeclient "github.com/cosmos/cosmos-sdk/x/upgrade/client"
 )
 
-const appName = "app"
+const appName = "qonico"
 
 var (
-  // TODO: rename your cli
-
   // DefaultCLIHome default home directories for the application CLI
-  DefaultCLIHome = os.ExpandEnv("$HOME/.appcli")
-
-  // TODO: rename your daemon
+  DefaultCLIHome = os.ExpandEnv("$HOME/.qonicocli")
 
   // DefaultNodeHome sets the folder where the applcation data and configuration will be stored
-  DefaultNodeHome = os.ExpandEnv("$HOME/.appd")
+  DefaultNodeHome = os.ExpandEnv("$HOME/.qonicod")
 
   // ModuleBasics The module BasicManager is in charge of setting up basic,
   // non-dependant module elements, such as codec registration

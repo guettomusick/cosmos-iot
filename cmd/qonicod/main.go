@@ -42,8 +42,8 @@ func main() {
 	ctx := server.NewDefaultContext()
 	cobra.EnableCommandSorting = false
 	rootCmd := &cobra.Command{
-		Use:               "appd",
-		Short:             "app Daemon (server)",
+		Use:               "qonicod",
+		Short:             "qonico Daemon (server)",
 		PersistentPreRunE: server.PersistentPreRunEFn(ctx),
 	}
 
