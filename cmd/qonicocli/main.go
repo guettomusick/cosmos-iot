@@ -47,8 +47,8 @@ func main() {
 	// with the cdc
 
 	rootCmd := &cobra.Command{
-		Use:   "appcli",
-		Short: "Command line interface for interacting with appd",
+		Use:   "qonicocli",
+		Short: "Command line interface for interacting with qonicod",
 	}
 
 	// Add --chain-id to persistent flags and mark it required
