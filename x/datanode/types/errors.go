@@ -4,8 +4,11 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 )
 
-// TODO: Fill out some custom errors for the module
-// You can see how they are constructed below:
-// var (
-//	ErrInvalid = sdkerrors.Register(ModuleName, 1, "custom error message")
-// )
+var (
+	// ErrInvalidDataNode no datanode present with the given address
+	ErrInvalidDataNode = sdkerrors.Register(ModuleName, 1, "no datanode present with the given address")
+	// ErrInvalidDataNodeChannel no channel present with the given id on the datanode
+	ErrInvalidDataNodeChannel = sdkerrors.Register(ModuleName, 2, "no channel present with the given id on the datanode")
+	// ErrInvalidDataRecord no datarecord present with the given address
+	ErrInvalidDataRecord = sdkerrors.Register(ModuleName, 3, "no datarecord present with the given hash")
+)

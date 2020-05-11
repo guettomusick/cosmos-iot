@@ -5,43 +5,49 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 )
 
-// TODO: Describe your actions, these will implment the interface of `sdk.Msg`
-/*
-verify interface at compile time
-var _ sdk.Msg = &Msg<Action>{}
-
-Msg<Action> - struct for unjailing jailed validator
-type Msg<Action> struct {
-	ValidatorAddr sdk.ValAddress `json:"address" yaml:"address"` // address of the validator operator
+// MsgSetOwner change the owner of a DataNode or creates a new one if doesn't exist
+type MsgSetOwner struct {
+	DataNode sdk.AccAddress `json:"datanode"`
+	Owner    sdk.AccAddress `json:"owner"`
+	NewOwner sdk.AccAddress `json:"newowner"`
+	Name     string         `json:"name"`
 }
 
-NewMsg<Action> creates a new Msg<Action> instance
-func NewMsg<Action>(validatorAddr sdk.ValAddress) Msg<Action> {
-	return Msg<Action>{
-		ValidatorAddr: validatorAddr,
+// NewMsgSetOwner is a constructor function for MsgSetOwner
+func NewMsgSetOwner(dataNode sdk.AccAddress, owner sdk.AccAddress, name string) MsgSetOwner {
+	return MsgSetOwner{
+		DataNode: dataNode,
+		Owner:    owner,
+		Name:     name,
 	}
 }
 
-const <action>Const = "<action>"
+// Route should return the name of the module
+func (msg MsgSetOwner) Route() string { return RouterKey }
 
-// nolint
-func (msg Msg<Action>) Route() string { return RouterKey }
-func (msg Msg<Action>) Type() string  { return <action>Const }
-func (msg Msg<Action>) GetSigners() []sdk.AccAddress {
-	return []sdk.AccAddress{sdk.AccAddress(msg.ValidatorAddr)}
-}
+// Type should return the action
+func (msg MsgSetOwner) Type() string { return "set_owner" }
 
-GetSignBytes gets the bytes for the message signer to sign on
-func (msg Msg<Action>) GetSignBytes() []byte {
-	bz := ModuleCdc.MustMarshalJSON(msg)
-	return sdk.MustSortJSON(bz)
-}
-
-ValidateBasic validity check for the AnteHandler
-func (msg Msg<Action>) ValidateBasic() error {
-	if msg.ValidatorAddr.Empty() {
-		return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "missing validator address"
+// ValidateBasic runs stateless checks on the message
+func (msg MsgSetOwner) ValidateBasic() error {
+	if msg.DataNode.Empty() {
+		return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, msg.DataNode.String())
+	}
+	if msg.Owner.Empty() {
+		return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, msg.DataNode.String())
+	}
+	if msg.NewOwner.Empty() {
+		return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, msg.NewOwner.String())
 	}
 	return nil
 }
-*/
+
+// GetSignBytes encodes the message for signing
+func (msg MsgSetOwner) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(msg))
+}
+
+// GetSigners defines whose signature is required
+func (msg MsgSetOwner) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{msg.Owner}
+}

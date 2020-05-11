@@ -3,6 +3,8 @@ package datanode
 import (
 	"fmt"
 
+	"github.com/qonico/cosmos-iot/x/datanode/types"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 )
@@ -12,33 +14,28 @@ func NewHandler(k Keeper) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
 		ctx = ctx.WithEventManager(sdk.NewEventManager())
 		switch msg := msg.(type) {
-		// TODO: Define your msg cases
-		// 
-		//Example:
-		// case Msg<Action>:
-		// 	return handleMsg<Action>(ctx, k, msg)
+		case types.MsgSetOwner:
+			return handleMsgSetOwner(ctx, k, msg)
 		default:
-			errMsg := fmt.Sprintf("unrecognized %s message type: %T", ModuleName,  msg)
+			errMsg := fmt.Sprintf("unrecognized %s message type: %T", ModuleName, msg)
 			return nil, sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, errMsg)
 		}
 	}
 }
 
-// handle<Action> does x
-func handleMsg<Action>(ctx sdk.Context, k Keeper, msg Msg<Action>) (*sdk.Result, error) {
-	err := k.<Action>(ctx, msg.ValidatorAddr)
+// handle a messsage to change owner or create a new datanode
+func handleMsgSetOwner(ctx sdk.Context, k Keeper, msg types.MsgSetOwner) (*sdk.Result, error) {
+	dataNode, err := k.GetDataNode(ctx, msg.DataNode)
 	if err != nil {
-		return nil, err
+		// If theres no datanode, then owner must be the datanode itself
+		if !msg.Owner.Equals(msg.DataNode) {
+			return nil, sdkerrors.Wrap(sdkerrors.ErrUnauthorized, "Incorrect Owner - owner must be the same as datanode for datanode creation")
+		}
+	} else if !dataNode.Owner.Equals(msg.Owner) {
+		// only owner can reassign owner
+		return nil, sdkerrors.Wrap(sdkerrors.ErrUnauthorized, "Incorrect Owner - existing datanode and owner don't match")
 	}
 
-	// TODO: Define your msg events
-	ctx.EventManager().EmitEvent(
-		sdk.NewEvent(
-			sdk.EventTypeMessage,
-			sdk.NewAttribute(sdk.AttributeKeyModule, AttributeValueCategory),
-			sdk.NewAttribute(sdk.AttributeKeySender, msg.ValidatorAddr.String()),
-		),
-	)
-
+	k.SetDataNodeOwner(ctx, msg.DataNode, msg.NewOwner)
 	return &sdk.Result{Events: ctx.EventManager().Events()}, nil
 }

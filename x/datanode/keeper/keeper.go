@@ -1,57 +1,259 @@
 package keeper
 
 import (
-	"fmt"
-
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/libs/log"
-
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/x/bank"
 	"github.com/qonico/cosmos-iot/x/datanode/types"
 )
 
 // Keeper of the datanode store
 type Keeper struct {
+	coinKeeper types.BankKeeper
 	storeKey   sdk.StoreKey
 	cdc        *codec.Codec
-	paramspace types.ParamSubspace
 }
 
-// NewKeeper creates a datanode keeper
-func NewKeeper(cdc *codec.Codec, key sdk.StoreKey, paramspace types.ParamSubspace) Keeper {
+// NewKeeper - creates a datanode keeper
+func NewKeeper(coinKeeper bank.Keeper, cdc *codec.Codec, key sdk.StoreKey) Keeper {
 	keeper := Keeper{
+		coinKeeper: coinKeeper,
 		storeKey:   key,
 		cdc:        cdc,
-		paramspace: paramspace.WithKeyTable(types.ParamKeyTable()),
 	}
 	return keeper
 }
 
-// Logger returns a module-specific logger.
-func (k Keeper) Logger(ctx sdk.Context) log.Logger {
-	return ctx.Logger().With("module", fmt.Sprintf("x/%s", types.ModuleName))
+// DataNode keeper methods
+
+// GetDataNode - gets the entire datanode metadata struct for an address
+func (k Keeper) GetDataNode(ctx sdk.Context, address sdk.AccAddress) (*types.DataNode, error) {
+	store := ctx.KVStore(k.storeKey)
+	if !k.IsDataNodePresent(ctx, address) {
+		return nil, types.ErrInvalidDataNode
+	}
+	bz := store.Get([]byte(address))
+	var dataNode types.DataNode
+	k.cdc.MustUnmarshalBinaryBare(bz, &dataNode)
+	return &dataNode, nil
 }
 
-// Get returns the pubkey from the adddress-pubkey relation
-func (k Keeper) Get(ctx sdk.Context, key string) (/* TODO: Fill out this type */, error) {
+// SetDataNode - sets the entire datanode metadata struct for an address
+func (k Keeper) SetDataNode(ctx sdk.Context, address sdk.AccAddress, dataNode *types.DataNode) {
+	if dataNode.Owner.Empty() {
+		return
+	}
+
+	if dataNode.ID.Empty() {
+		dataNode.ID = address
+	}
+
 	store := ctx.KVStore(k.storeKey)
-	var item /* TODO: Fill out this type */
-	byteKey := []byte(key)
-	err := k.cdc.UnmarshalBinaryLengthPrefixed(store.Get(byteKey), &item)
+	store.Set([]byte(address), k.cdc.MustMarshalBinaryBare(dataNode))
+}
+
+// DeleteDataNode - Deletes the entire metadata struct for an address and all related datarecords
+func (k Keeper) DeleteDataNode(ctx sdk.Context, address sdk.AccAddress) {
+	store := ctx.KVStore(k.storeKey)
+	dataNode, err := k.GetDataNode(ctx, address)
+	if err != nil {
+		return
+	}
+
+	for _, hash := range dataNode.Records {
+		store.Delete(hash[:])
+	}
+	store.Delete([]byte(address))
+}
+
+// IsDataNodePresent - check if the datanode is present in the store or not
+func (k Keeper) IsDataNodePresent(ctx sdk.Context, address sdk.AccAddress) bool {
+	store := ctx.KVStore(k.storeKey)
+	return store.Has([]byte(address))
+}
+
+// GetChannels - get the channels of the datanode
+func (k Keeper) GetChannels(ctx sdk.Context, address sdk.AccAddress) (*[]types.NodeChannel, error) {
+	datanode, err := k.GetDataNode(ctx, address)
 	if err != nil {
 		return nil, err
 	}
-	return item, nil
+	return &datanode.Channels, nil
 }
 
-func (k Keeper) set(ctx sdk.Context, key string, value /* TODO: fill out this type */ ) {
-	store := ctx.KVStore(k.storeKey)
-	bz := k.cdc.MustMarshalBinaryLengthPrefixed(value)
-	store.Set([]byte(key), bz)
+// GetChannel - get a channel from the datanode
+func (k Keeper) GetChannel(ctx sdk.Context, address sdk.AccAddress, id string) (*types.NodeChannel, error) {
+	channels, err := k.GetChannels(ctx, address)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range *channels {
+		if c.ID == id {
+			return &c, nil
+		}
+	}
+	return nil, types.ErrInvalidDataNodeChannel
 }
 
-func (k Keeper) delete(ctx sdk.Context, key string) {
+// GetRecordHashes - get the datarecord hashes belonging to the datanode
+func (k Keeper) GetRecordHashes(ctx sdk.Context, address sdk.AccAddress) (*[]types.DataRecordHash, error) {
+	datanode, err := k.GetDataNode(ctx, address)
+	if err != nil {
+		return nil, err
+	}
+	return &datanode.Records, nil
+}
+
+// AddRecordHash - add a recordhash to the datanode
+func (k Keeper) AddRecordHash(ctx sdk.Context, address sdk.AccAddress, hash types.DataRecordHash) error {
+	datanode, err := k.GetDataNode(ctx, address)
+	if err != nil {
+		return err
+	}
+	datanode.Records = append(datanode.Records, hash)
+	k.SetDataNode(ctx, address, datanode)
+	return nil
+}
+
+// AddChannel - add a new channel to the datanode
+func (k Keeper) AddChannel(ctx sdk.Context, address sdk.AccAddress, channel types.NodeChannel) error {
+	datanode, err := k.GetDataNode(ctx, address)
+	if err != nil {
+		return err
+	}
+	datanode.Channels = append(datanode.Channels, channel)
+	k.SetDataNode(ctx, address, datanode)
+	return nil
+}
+
+// ChangeChannel - change a channel on the datanode
+func (k Keeper) ChangeChannel(ctx sdk.Context, address sdk.AccAddress, channel types.NodeChannel) error {
+	datanode, err := k.GetDataNode(ctx, address)
+	modified := false
+	if err != nil {
+		return err
+	}
+	for _, c := range datanode.Channels {
+		if c.ID == channel.ID {
+			c.Variable = channel.Variable
+			modified = true
+			break
+		}
+	}
+
+	if !modified {
+		return types.ErrInvalidDataNodeChannel
+	}
+	k.SetDataNode(ctx, address, datanode)
+	return nil
+}
+
+// SetDataNodeOwner - change the owner of the datanode
+func (k Keeper) SetDataNodeOwner(ctx sdk.Context, address sdk.AccAddress, owner sdk.AccAddress) {
+	dataNode, err := k.GetDataNode(ctx, address)
+	if err != nil {
+		newDataNode := types.NewDataNode(address, owner)
+		dataNode = &newDataNode
+	} else {
+		dataNode.Owner = owner
+	}
+	k.SetDataNode(ctx, address, dataNode)
+}
+
+// DataRecord methods
+
+// GetDataRecord - gets the datarecord from the KVStore
+func (k Keeper) GetDataRecord(ctx sdk.Context, hash types.DataRecordHash) (*types.DataRecord, error) {
 	store := ctx.KVStore(k.storeKey)
-	store.Delete([]byte(key))
+	if !k.IsDataRecordPresent(ctx, hash) {
+		return nil, types.ErrInvalidDataRecord
+	}
+	bz := store.Get(hash[:])
+	var dataRecord types.DataRecord
+	k.cdc.MustUnmarshalBinaryBare(bz, &dataRecord)
+	return &dataRecord, nil
+}
+
+// SetDataRecord - sets the datarecord on the KVStore
+func (k Keeper) SetDataRecord(ctx sdk.Context, hash types.DataRecordHash, dataRecord *types.DataRecord) {
+	if dataRecord.DataNode.Empty() || len(dataRecord.NodeChannel.ID) == 0 {
+		return
+	}
+
+	store := ctx.KVStore(k.storeKey)
+	store.Set(hash[:], k.cdc.MustMarshalBinaryBare(dataRecord))
+}
+
+// IsDataRecordPresent - check if the datarecord is present in the store or not
+func (k Keeper) IsDataRecordPresent(ctx sdk.Context, hash types.DataRecordHash) bool {
+	store := ctx.KVStore(k.storeKey)
+	return store.Has(hash[:])
+}
+
+// GetLastRecords - get the latest time frame records
+func (k Keeper) GetLastRecords(ctx sdk.Context, address sdk.AccAddress, channelID string) (*[]types.Record, error) {
+	channel, err := k.GetChannel(ctx, address, channelID)
+	if err != nil {
+		return nil, err
+	}
+
+	hash := types.GetActualDataRecordHash(address, channel)
+
+	dataRecord, err := k.GetDataRecord(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dataRecord.Records, nil
+}
+
+// GetRecords - get records from the date time frame
+func (k Keeper) GetRecords(ctx sdk.Context, address sdk.AccAddress, channelID string, date int64) (*[]types.Record, error) {
+	channel, err := k.GetChannel(ctx, address, channelID)
+	if err != nil {
+		return nil, err
+	}
+
+	hash := types.GetDataRecordHash(address, channel, date)
+
+	dataRecord, err := k.GetDataRecord(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dataRecord.Records, nil
+}
+
+// AddRecord - add a new record to the time frame
+func (k Keeper) AddRecord(ctx sdk.Context, address sdk.AccAddress, channelID string, date int64, record types.Record) error {
+	channel, err := k.GetChannel(ctx, address, channelID)
+	if err != nil {
+		return err
+	}
+
+	hash := types.GetDataRecordHash(address, channel, date)
+
+	dataRecord, err := k.GetDataRecord(ctx, hash)
+	if err != nil {
+		if err == types.ErrInvalidDataRecord {
+			newDataRecord := types.NewDataRecord(address, channel)
+			dataRecord = &newDataRecord
+		} else {
+			return err
+		}
+	}
+
+	duplicate := false
+	for _, r := range dataRecord.Records {
+		if r.TimeStamp == record.TimeStamp {
+			duplicate = true
+			break
+		}
+	}
+
+	if !duplicate {
+		dataRecord.Records = append(dataRecord.Records, record)
+		k.SetDataRecord(ctx, hash, dataRecord)
+	}
+	return nil
 }
