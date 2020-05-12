@@ -1,22 +1,30 @@
 package types
 
+import (
+	"encoding/json"
+)
 
 // Query endpoints supported by the datanode querier
 const (
-	// TODO: Describe query parameters, update <action> with your query
-	// Query<Action>    = "<action>"
+	QueryDataNode = "datanode"
+	QueryRecords  = "records"
 )
 
-/* 
-Below you will be able how to set your own queries:
-
-
-// QueryResList Queries Result Payload for a query
-type QueryResList []string
-
-// implement fmt.Stringer
-func (n QueryResList) String() string {
-	return strings.Join(n[:], "\n")
+// QueryResRecords - queries result payload for a single record
+type QueryResRecords struct {
+	TimeStamp uint32  `json:"ts"`    // timestamp in seconds since epoch
+	Value     float32 `json:"value"` // numeric value of the record
+	Misc      string  `json:"misc"`  // miscellaneous data for other non numeric records
 }
 
-*/
+// QueryResRecordsList - queries result payload for datarecords within time frame
+type QueryResRecordsList []QueryResRecords
+
+// implement fmt.Stringer
+func (r QueryResRecordsList) String() string {
+	res, err := json.Marshal(r)
+	if err != nil {
+		return ""
+	}
+	return string(res)
+}

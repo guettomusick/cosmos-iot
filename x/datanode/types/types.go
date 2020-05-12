@@ -34,6 +34,13 @@ type Record struct {
 	Misc      string  `json:"m"` // miscellaneous data for other non numeric records
 }
 
+// implement fmt.Stringer
+func (r Record) String() string {
+	return strings.TrimSpace(fmt.Sprintf(`
+		TimeStamp: %d, Value: %f, Misc: %s
+	`, r.TimeStamp, r.Value, r.Misc))
+}
+
 // DataRecord is a time frame package of records
 type DataRecord struct {
 	DataNode    sdk.AccAddress `json:"datanode"` // datanode which push the records

@@ -3,23 +3,20 @@ package keeper
 import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/bank"
 	"github.com/qonico/cosmos-iot/x/datanode/types"
 )
 
-// Keeper of the datanode store
-type Keeper struct {
-	coinKeeper types.BankKeeper
-	storeKey   sdk.StoreKey
-	cdc        *codec.Codec
+// DataNodeKeeper - keeper of the datanode store
+type DataNodeKeeper struct {
+	storeKey sdk.StoreKey
+	cdc      *codec.Codec
 }
 
 // NewKeeper - creates a datanode keeper
-func NewKeeper(coinKeeper bank.Keeper, cdc *codec.Codec, key sdk.StoreKey) Keeper {
-	keeper := Keeper{
-		coinKeeper: coinKeeper,
-		storeKey:   key,
-		cdc:        cdc,
+func NewKeeper(cdc *codec.Codec, key sdk.StoreKey) DataNodeKeeper {
+	keeper := DataNodeKeeper{
+		storeKey: key,
+		cdc:      cdc,
 	}
 	return keeper
 }
@@ -27,7 +24,7 @@ func NewKeeper(coinKeeper bank.Keeper, cdc *codec.Codec, key sdk.StoreKey) Keepe
 // DataNode keeper methods
 
 // GetDataNode - gets the entire datanode metadata struct for an address
-func (k Keeper) GetDataNode(ctx sdk.Context, address sdk.AccAddress) (*types.DataNode, error) {
+func (k DataNodeKeeper) GetDataNode(ctx sdk.Context, address sdk.AccAddress) (*types.DataNode, error) {
 	store := ctx.KVStore(k.storeKey)
 	if !k.IsDataNodePresent(ctx, address) {
 		return nil, types.ErrInvalidDataNode
@@ -39,7 +36,7 @@ func (k Keeper) GetDataNode(ctx sdk.Context, address sdk.AccAddress) (*types.Dat
 }
 
 // SetDataNode - sets the entire datanode metadata struct for an address
-func (k Keeper) SetDataNode(ctx sdk.Context, address sdk.AccAddress, dataNode *types.DataNode) {
+func (k DataNodeKeeper) SetDataNode(ctx sdk.Context, address sdk.AccAddress, dataNode *types.DataNode) {
 	if dataNode.Owner.Empty() {
 		return
 	}
@@ -53,7 +50,7 @@ func (k Keeper) SetDataNode(ctx sdk.Context, address sdk.AccAddress, dataNode *t
 }
 
 // DeleteDataNode - Deletes the entire metadata struct for an address and all related datarecords
-func (k Keeper) DeleteDataNode(ctx sdk.Context, address sdk.AccAddress) {
+func (k DataNodeKeeper) DeleteDataNode(ctx sdk.Context, address sdk.AccAddress) {
 	store := ctx.KVStore(k.storeKey)
 	dataNode, err := k.GetDataNode(ctx, address)
 	if err != nil {
@@ -67,13 +64,13 @@ func (k Keeper) DeleteDataNode(ctx sdk.Context, address sdk.AccAddress) {
 }
 
 // IsDataNodePresent - check if the datanode is present in the store or not
-func (k Keeper) IsDataNodePresent(ctx sdk.Context, address sdk.AccAddress) bool {
+func (k DataNodeKeeper) IsDataNodePresent(ctx sdk.Context, address sdk.AccAddress) bool {
 	store := ctx.KVStore(k.storeKey)
 	return store.Has([]byte(address))
 }
 
 // GetChannels - get the channels of the datanode
-func (k Keeper) GetChannels(ctx sdk.Context, address sdk.AccAddress) (*[]types.NodeChannel, error) {
+func (k DataNodeKeeper) GetChannels(ctx sdk.Context, address sdk.AccAddress) (*[]types.NodeChannel, error) {
 	datanode, err := k.GetDataNode(ctx, address)
 	if err != nil {
 		return nil, err
@@ -82,7 +79,7 @@ func (k Keeper) GetChannels(ctx sdk.Context, address sdk.AccAddress) (*[]types.N
 }
 
 // GetChannel - get a channel from the datanode
-func (k Keeper) GetChannel(ctx sdk.Context, address sdk.AccAddress, id string) (*types.NodeChannel, error) {
+func (k DataNodeKeeper) GetChannel(ctx sdk.Context, address sdk.AccAddress, id string) (*types.NodeChannel, error) {
 	channels, err := k.GetChannels(ctx, address)
 	if err != nil {
 		return nil, err
@@ -96,7 +93,7 @@ func (k Keeper) GetChannel(ctx sdk.Context, address sdk.AccAddress, id string) (
 }
 
 // GetRecordHashes - get the datarecord hashes belonging to the datanode
-func (k Keeper) GetRecordHashes(ctx sdk.Context, address sdk.AccAddress) (*[]types.DataRecordHash, error) {
+func (k DataNodeKeeper) GetRecordHashes(ctx sdk.Context, address sdk.AccAddress) (*[]types.DataRecordHash, error) {
 	datanode, err := k.GetDataNode(ctx, address)
 	if err != nil {
 		return nil, err
@@ -105,7 +102,7 @@ func (k Keeper) GetRecordHashes(ctx sdk.Context, address sdk.AccAddress) (*[]typ
 }
 
 // AddRecordHash - add a recordhash to the datanode
-func (k Keeper) AddRecordHash(ctx sdk.Context, address sdk.AccAddress, hash types.DataRecordHash) error {
+func (k DataNodeKeeper) AddRecordHash(ctx sdk.Context, address sdk.AccAddress, hash types.DataRecordHash) error {
 	datanode, err := k.GetDataNode(ctx, address)
 	if err != nil {
 		return err
@@ -116,7 +113,7 @@ func (k Keeper) AddRecordHash(ctx sdk.Context, address sdk.AccAddress, hash type
 }
 
 // AddChannel - add a new channel to the datanode
-func (k Keeper) AddChannel(ctx sdk.Context, address sdk.AccAddress, channel types.NodeChannel) error {
+func (k DataNodeKeeper) AddChannel(ctx sdk.Context, address sdk.AccAddress, channel types.NodeChannel) error {
 	datanode, err := k.GetDataNode(ctx, address)
 	if err != nil {
 		return err
@@ -127,7 +124,7 @@ func (k Keeper) AddChannel(ctx sdk.Context, address sdk.AccAddress, channel type
 }
 
 // ChangeChannel - change a channel on the datanode
-func (k Keeper) ChangeChannel(ctx sdk.Context, address sdk.AccAddress, channel types.NodeChannel) error {
+func (k DataNodeKeeper) ChangeChannel(ctx sdk.Context, address sdk.AccAddress, channel types.NodeChannel) error {
 	datanode, err := k.GetDataNode(ctx, address)
 	modified := false
 	if err != nil {
@@ -142,14 +139,31 @@ func (k Keeper) ChangeChannel(ctx sdk.Context, address sdk.AccAddress, channel t
 	}
 
 	if !modified {
-		return types.ErrInvalidDataNodeChannel
+		return k.AddChannel(ctx, address, channel)
+	}
+	k.SetDataNode(ctx, address, datanode)
+	return nil
+}
+
+// DeleteChannel - removes a channel from the datanode
+func (k DataNodeKeeper) DeleteChannel(ctx sdk.Context, address sdk.AccAddress, channelID string) error {
+	datanode, err := k.GetDataNode(ctx, address)
+	if err != nil {
+		return err
+	}
+	for i, c := range datanode.Channels {
+		if c.ID == channelID {
+			datanode.Channels[i] = datanode.Channels[len(datanode.Channels)-1]
+			datanode.Channels = datanode.Channels[:len(datanode.Channels)-1]
+			break
+		}
 	}
 	k.SetDataNode(ctx, address, datanode)
 	return nil
 }
 
 // SetDataNodeOwner - change the owner of the datanode
-func (k Keeper) SetDataNodeOwner(ctx sdk.Context, address sdk.AccAddress, owner sdk.AccAddress) {
+func (k DataNodeKeeper) SetDataNodeOwner(ctx sdk.Context, address sdk.AccAddress, owner sdk.AccAddress) {
 	dataNode, err := k.GetDataNode(ctx, address)
 	if err != nil {
 		newDataNode := types.NewDataNode(address, owner)
@@ -163,7 +177,7 @@ func (k Keeper) SetDataNodeOwner(ctx sdk.Context, address sdk.AccAddress, owner 
 // DataRecord methods
 
 // GetDataRecord - gets the datarecord from the KVStore
-func (k Keeper) GetDataRecord(ctx sdk.Context, hash types.DataRecordHash) (*types.DataRecord, error) {
+func (k DataNodeKeeper) GetDataRecord(ctx sdk.Context, hash types.DataRecordHash) (*types.DataRecord, error) {
 	store := ctx.KVStore(k.storeKey)
 	if !k.IsDataRecordPresent(ctx, hash) {
 		return nil, types.ErrInvalidDataRecord
@@ -175,7 +189,7 @@ func (k Keeper) GetDataRecord(ctx sdk.Context, hash types.DataRecordHash) (*type
 }
 
 // SetDataRecord - sets the datarecord on the KVStore
-func (k Keeper) SetDataRecord(ctx sdk.Context, hash types.DataRecordHash, dataRecord *types.DataRecord) {
+func (k DataNodeKeeper) SetDataRecord(ctx sdk.Context, hash types.DataRecordHash, dataRecord *types.DataRecord) {
 	if dataRecord.DataNode.Empty() || len(dataRecord.NodeChannel.ID) == 0 {
 		return
 	}
@@ -185,13 +199,13 @@ func (k Keeper) SetDataRecord(ctx sdk.Context, hash types.DataRecordHash, dataRe
 }
 
 // IsDataRecordPresent - check if the datarecord is present in the store or not
-func (k Keeper) IsDataRecordPresent(ctx sdk.Context, hash types.DataRecordHash) bool {
+func (k DataNodeKeeper) IsDataRecordPresent(ctx sdk.Context, hash types.DataRecordHash) bool {
 	store := ctx.KVStore(k.storeKey)
 	return store.Has(hash[:])
 }
 
 // GetLastRecords - get the latest time frame records
-func (k Keeper) GetLastRecords(ctx sdk.Context, address sdk.AccAddress, channelID string) (*[]types.Record, error) {
+func (k DataNodeKeeper) GetLastRecords(ctx sdk.Context, address sdk.AccAddress, channelID string) (*[]types.Record, error) {
 	channel, err := k.GetChannel(ctx, address, channelID)
 	if err != nil {
 		return nil, err
@@ -208,7 +222,7 @@ func (k Keeper) GetLastRecords(ctx sdk.Context, address sdk.AccAddress, channelI
 }
 
 // GetRecords - get records from the date time frame
-func (k Keeper) GetRecords(ctx sdk.Context, address sdk.AccAddress, channelID string, date int64) (*[]types.Record, error) {
+func (k DataNodeKeeper) GetRecords(ctx sdk.Context, address sdk.AccAddress, channelID string, date int64) (*[]types.Record, error) {
 	channel, err := k.GetChannel(ctx, address, channelID)
 	if err != nil {
 		return nil, err
@@ -225,7 +239,7 @@ func (k Keeper) GetRecords(ctx sdk.Context, address sdk.AccAddress, channelID st
 }
 
 // AddRecord - add a new record to the time frame
-func (k Keeper) AddRecord(ctx sdk.Context, address sdk.AccAddress, channelID string, date int64, record types.Record) error {
+func (k DataNodeKeeper) AddRecord(ctx sdk.Context, address sdk.AccAddress, channelID string, date int64, record types.Record) error {
 	channel, err := k.GetChannel(ctx, address, channelID)
 	if err != nil {
 		return err
@@ -256,4 +270,9 @@ func (k Keeper) AddRecord(ctx sdk.Context, address sdk.AccAddress, channelID str
 		k.SetDataRecord(ctx, hash, dataRecord)
 	}
 	return nil
+}
+
+// AddRecordAtTimestamp - add a new record to the time frame using timestamp data
+func (k DataNodeKeeper) AddRecordAtTimestamp(ctx sdk.Context, address sdk.AccAddress, channelID string, record types.Record) error {
+	return k.AddRecord(ctx, address, channelID, int64(record.TimeStamp), record)
 }
