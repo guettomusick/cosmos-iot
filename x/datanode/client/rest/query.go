@@ -8,33 +8,41 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/types/rest"
-	"github.com/qonico/cosmos-iot/x/datanode/types"
 )
 
 func registerQueryRoutes(cliCtx context.CLIContext, r *mux.Router) {
-	// TODO: Define your GET REST endpoints
-	r.HandleFunc(
-		"/datanode/parameters",
-		queryParamsHandlerFn(cliCtx),
-	).Methods("GET")
+	r.HandleFunc("/datanode/{address}/records/{channelid}/{date}", queryRecordsHandler(cliCtx)).Methods("GET")
+	r.HandleFunc("/datanode/{address}", queryDataNodeHandler(cliCtx)).Methods("GET")
 }
 
-func queryParamsHandlerFn(cliCtx context.CLIContext) http.HandlerFunc {
+func queryDataNodeHandler(cliCtx context.CLIContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cliCtx, ok := rest.ParseQueryHeightOrReturnBadRequest(w, cliCtx, r)
-		if !ok {
-			return
-		}
+		vars := mux.Vars(r)
+		address := vars["address"]
 
-		route := fmt.Sprintf("custom/%s/parameters", types.QuerierRoute)
-
-		res, height, err := cliCtx.QueryWithData(route, nil)
+		res, _, err := cliCtx.QueryWithData(fmt.Sprintf("custom/datanode/datanode/%s", address), nil)
 		if err != nil {
-			rest.WriteErrorResponse(w, http.StatusInternalServerError, err.Error())
+			rest.WriteErrorResponse(w, http.StatusNotFound, err.Error())
 			return
 		}
 
-		cliCtx = cliCtx.WithHeight(height)
+		rest.PostProcessResponse(w, cliCtx, res)
+	}
+}
+
+func queryRecordsHandler(cliCtx context.CLIContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		address := vars["address"]
+		channelID := vars["channelid"]
+		date := vars["date"]
+
+		res, _, err := cliCtx.QueryWithData(fmt.Sprintf("custom/datanode/records/%s/%s/%s", address, channelID, date), nil)
+		if err != nil {
+			rest.WriteErrorResponse(w, http.StatusNotFound, err.Error())
+			return
+		}
+
 		rest.PostProcessResponse(w, cliCtx, res)
 	}
 }

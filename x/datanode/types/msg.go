@@ -14,10 +14,11 @@ type MsgSetOwner struct {
 }
 
 // NewMsgSetOwner is a constructor function for MsgSetOwner
-func NewMsgSetOwner(dataNode sdk.AccAddress, owner sdk.AccAddress, name string) MsgSetOwner {
+func NewMsgSetOwner(dataNode sdk.AccAddress, owner sdk.AccAddress, newOwner sdk.AccAddress, name string) MsgSetOwner {
 	return MsgSetOwner{
 		DataNode: dataNode,
 		Owner:    owner,
+		NewOwner: newOwner,
 		Name:     name,
 	}
 }
@@ -123,7 +124,7 @@ type MsgAddRecords struct {
 }
 
 // NewMsgAddRecords is a constructor function for MsgAddRecords
-func NewMsgAddRecords(owner sdk.AccAddress, dataNode sdk.AccAddress, records []NewRecord) MsgAddRecords {
+func NewMsgAddRecords(dataNode sdk.AccAddress, records []NewRecord) MsgAddRecords {
 	return MsgAddRecords{
 		DataNode: dataNode,
 		Records:  records,

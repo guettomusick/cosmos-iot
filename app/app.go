@@ -32,7 +32,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/supply"
 	"github.com/cosmos/cosmos-sdk/x/upgrade"
 	upgradeclient "github.com/cosmos/cosmos-sdk/x/upgrade/client"
-	"github.com/cosmos/sdk-tutorials/nameservice/x/nameservice"
 
 	"github.com/qonico/cosmos-iot/x/datanode"
 )
@@ -63,7 +62,7 @@ var (
 		supply.AppModuleBasic{},
 		upgrade.AppModuleBasic{},
 		evidence.AppModuleBasic{},
-		// TODO: Add your module(s) AppModuleBasic
+		datanode.AppModule{},
 	)
 
 	// module account permissions
@@ -90,8 +89,8 @@ func MakeCodec() *codec.Codec {
 	return cdc.Seal()
 }
 
-// NewApp extended ABCI application
-type NewApp struct {
+// QonicoIoTApp extended ABCI application
+type QonicoIoTApp struct {
 	*bam.BaseApp
 	cdc *codec.Codec
 
@@ -127,13 +126,13 @@ type NewApp struct {
 }
 
 // verify app interface at compile time
-var _ simapp.App = (*NewApp)(nil)
+var _ simapp.App = (*QonicoIoTApp)(nil)
 
 // Newcosmos-iotApp is a constructor function for cosmos-iotApp
-func NewInitApp(
+func NewQonicoIoTApp(
 	logger log.Logger, db dbm.DB, traceStore io.Writer, loadLatest bool,
 	invCheckPeriod uint, skipUpgradeHeights map[int64]bool, baseAppOptions ...func(*bam.BaseApp),
-) *NewApp {
+) *QonicoIoTApp {
 	// First define the top level codec that will be shared by the different modules
 	cdc := MakeCodec()
 
@@ -151,7 +150,7 @@ func NewInitApp(
 	tKeys := sdk.NewTransientStoreKeys(staking.TStoreKey, params.TStoreKey)
 
 	// Here you initialize your application with the store keys it requires
-	var app = &NewApp{
+	var app = &QonicoIoTApp{
 		BaseApp:        bApp,
 		cdc:            cdc,
 		invCheckPeriod: invCheckPeriod,
@@ -269,9 +268,9 @@ func NewInitApp(
 		),
 	)
 
-	app.dataNodeKeeper = datanode.NewDataNodeKeeper(
+	app.dataNodeKeeper = datanode.NewKeeper(
 		app.cdc,
-		keys[nameservice.StoreKey],
+		keys[datanode.StoreKey],
 	)
 
 	// NOTE: Any module instantiated in the module manager that is later modified
@@ -286,7 +285,7 @@ func NewInitApp(
 		mint.NewAppModule(app.mintKeeper),
 		slashing.NewAppModule(app.slashingKeeper, app.accountKeeper, app.stakingKeeper),
 		distr.NewAppModule(app.distrKeeper, app.accountKeeper, app.supplyKeeper, app.stakingKeeper),
-		// TODO: Add your module(s)
+		datanode.NewAppModule(app.dataNodeKeeper),
 		staking.NewAppModule(app.stakingKeeper, app.accountKeeper, app.supplyKeeper),
 		upgrade.NewAppModule(app.upgradeKeeper),
 		evidence.NewAppModule(app.evidenceKeeper),
@@ -309,7 +308,7 @@ func NewInitApp(
 		slashing.ModuleName,
 		gov.ModuleName,
 		mint.ModuleName,
-		// TODO: Add your module(s)
+		datanode.ModuleName,
 		supply.ModuleName,
 		crisis.ModuleName,
 		genutil.ModuleName,
@@ -375,7 +374,7 @@ func NewDefaultGenesisState() GenesisState {
 }
 
 // InitChainer application update at chain initialization
-func (app *NewApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
+func (app *QonicoIoTApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
 	var genesisState simapp.GenesisState
 
 	app.cdc.MustUnmarshalJSON(req.AppStateBytes, &genesisState)
@@ -384,22 +383,22 @@ func (app *NewApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.
 }
 
 // BeginBlocker application updates every begin block
-func (app *NewApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
+func (app *QonicoIoTApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
 	return app.mm.BeginBlock(ctx, req)
 }
 
 // EndBlocker application updates every end block
-func (app *NewApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
+func (app *QonicoIoTApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
 	return app.mm.EndBlock(ctx, req)
 }
 
 // LoadHeight loads a particular height
-func (app *NewApp) LoadHeight(height int64) error {
+func (app *QonicoIoTApp) LoadHeight(height int64) error {
 	return app.LoadVersion(height, app.keys[bam.MainStoreKey])
 }
 
 // ModuleAccountAddrs returns all the app's module account addresses.
-func (app *NewApp) ModuleAccountAddrs() map[string]bool {
+func (app *QonicoIoTApp) ModuleAccountAddrs() map[string]bool {
 	modAccAddrs := make(map[string]bool)
 	for acc := range maccPerms {
 		modAccAddrs[supply.NewModuleAddress(acc).String()] = true
@@ -409,12 +408,12 @@ func (app *NewApp) ModuleAccountAddrs() map[string]bool {
 }
 
 // Codec returns the application's sealed codec.
-func (app *NewApp) Codec() *codec.Codec {
+func (app *QonicoIoTApp) Codec() *codec.Codec {
 	return app.cdc
 }
 
 // SimulationManager implements the SimulationApp interface
-func (app *NewApp) SimulationManager() *module.SimulationManager {
+func (app *QonicoIoTApp) SimulationManager() *module.SimulationManager {
 	return app.sm
 }
 

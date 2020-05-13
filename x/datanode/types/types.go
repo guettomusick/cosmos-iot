@@ -9,6 +9,10 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
+const (
+	timeFrame = 24 * 3600
+)
+
 // DataRecordHash is the hash key of the records time frame
 type DataRecordHash [16]byte
 
@@ -43,9 +47,10 @@ func (r Record) String() string {
 
 // DataRecord is a time frame package of records
 type DataRecord struct {
-	DataNode    sdk.AccAddress `json:"datanode"` // datanode which push the records
-	NodeChannel NodeChannel    `json:"channel"`  // channel within the datanode
-	Records     []Record       `json:"records"`  // records of the timerange
+	DataNode    sdk.AccAddress `json:"datanode"`  // datanode which push the records
+	NodeChannel NodeChannel    `json:"channel"`   // channel within the datanode
+	TimeFrame   int64          `json:"timeframe"` // timeframe of the datarecord
+	Records     []Record       `json:"records"`   // records of the timerange
 }
 
 // NewDataNode returns a new DataNode with the ID
@@ -67,11 +72,12 @@ func (d DataNode) String() string {
 }
 
 // NewDataRecord returns a new DataRecord with the DataNode and the NodeChannel and empty records set
-func NewDataRecord(dataNode sdk.AccAddress, channel *NodeChannel) DataRecord {
+func NewDataRecord(dataNode sdk.AccAddress, channel *NodeChannel, date int64) DataRecord {
 	records := []Record{}
 	return DataRecord{
 		DataNode:    dataNode,
 		NodeChannel: *channel,
+		TimeFrame:   date / timeFrame,
 		Records:     records,
 	}
 }
@@ -85,7 +91,7 @@ func GetActualDataRecordHash(dataNode sdk.AccAddress, channel *NodeChannel) Data
 // GetDataRecordHash returns the hash key to be used for KVStore
 func GetDataRecordHash(dataNode sdk.AccAddress, channel *NodeChannel, date int64) DataRecordHash {
 	// Use days since epoch as daily time frame to group records
-	key := fmt.Sprintf("%s%s%s%d", string(dataNode), channel.ID, channel.Variable, date/(24*3600))
+	key := fmt.Sprintf("%s%s%s%d", string(dataNode), channel.ID, channel.Variable, date/timeFrame)
 
 	return md5.Sum([]byte(key))
 }
@@ -95,8 +101,9 @@ func (r DataRecord) String() string {
 	return strings.TrimSpace(fmt.Sprintf(`
 		DataNode: %s
 		Channel: %s:%s
+		TimeFrame: %d
 		Records: %d
 		From: %d
 		To: %d
-	`, string(r.DataNode), r.NodeChannel.ID, r.NodeChannel.Variable, len(r.Records), r.Records[0].TimeStamp, r.Records[len(r.Records)-1].TimeStamp))
+	`, string(r.DataNode), r.NodeChannel.ID, r.NodeChannel.Variable, r.TimeFrame, len(r.Records), r.Records[0].TimeStamp, r.Records[len(r.Records)-1].TimeStamp))
 }

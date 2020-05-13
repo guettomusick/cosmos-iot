@@ -189,10 +189,12 @@ func (k DataNodeKeeper) GetDataRecord(ctx sdk.Context, hash types.DataRecordHash
 }
 
 // SetDataRecord - sets the datarecord on the KVStore
-func (k DataNodeKeeper) SetDataRecord(ctx sdk.Context, hash types.DataRecordHash, dataRecord *types.DataRecord) {
+func (k DataNodeKeeper) SetDataRecord(ctx sdk.Context, dataRecord *types.DataRecord) {
 	if dataRecord.DataNode.Empty() || len(dataRecord.NodeChannel.ID) == 0 {
 		return
 	}
+
+	hash := types.GetDataRecordHash(dataRecord.DataNode, &dataRecord.NodeChannel, dataRecord.TimeFrame)
 
 	store := ctx.KVStore(k.storeKey)
 	store.Set(hash[:], k.cdc.MustMarshalBinaryBare(dataRecord))
@@ -250,7 +252,7 @@ func (k DataNodeKeeper) AddRecord(ctx sdk.Context, address sdk.AccAddress, chann
 	dataRecord, err := k.GetDataRecord(ctx, hash)
 	if err != nil {
 		if err == types.ErrInvalidDataRecord {
-			newDataRecord := types.NewDataRecord(address, channel)
+			newDataRecord := types.NewDataRecord(address, channel, date)
 			dataRecord = &newDataRecord
 		} else {
 			return err
@@ -267,7 +269,7 @@ func (k DataNodeKeeper) AddRecord(ctx sdk.Context, address sdk.AccAddress, chann
 
 	if !duplicate {
 		dataRecord.Records = append(dataRecord.Records, record)
-		k.SetDataRecord(ctx, hash, dataRecord)
+		k.SetDataRecord(ctx, dataRecord)
 	}
 	return nil
 }
@@ -275,4 +277,10 @@ func (k DataNodeKeeper) AddRecord(ctx sdk.Context, address sdk.AccAddress, chann
 // AddRecordAtTimestamp - add a new record to the time frame using timestamp data
 func (k DataNodeKeeper) AddRecordAtTimestamp(ctx sdk.Context, address sdk.AccAddress, channelID string, record types.Record) error {
 	return k.AddRecord(ctx, address, channelID, int64(record.TimeStamp), record)
+}
+
+// GetIterator - get an iterator over all datanodes and datrecords
+func (k DataNodeKeeper) GetIterator(ctx sdk.Context) sdk.Iterator {
+	store := ctx.KVStore(k.storeKey)
+	return sdk.KVStorePrefixIterator(store, []byte{})
 }

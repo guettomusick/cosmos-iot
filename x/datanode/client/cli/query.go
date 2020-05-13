@@ -69,7 +69,7 @@ func GetCmdRecords(queryRoute string, cdc *codec.Codec) *cobra.Command {
 			channelID := args[1]
 			date := args[2]
 
-			res, _, err := cliCtx.QueryWithData(fmt.Sprintf("custom/%s/datanode/%s/%s/%s", queryRoute, address, channelID, date), nil)
+			res, _, err := cliCtx.QueryWithData(fmt.Sprintf("custom/%s/records/%s/%s/%s", queryRoute, address, channelID, date), nil)
 			if err != nil {
 				fmt.Printf("could not get records on - %s %s %s \n", address, channelID, date)
 				return nil
