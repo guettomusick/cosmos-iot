@@ -35,6 +35,6 @@ type (
 	DataNodeKeeper = keeper.DataNodeKeeper
 	GenesisState   = types.GenesisState
 	Params         = types.Params
-
-	// TODO: Fill out module types
+	DataNode       = types.DataNode
+	DataRecord     = types.DataRecord
 )
