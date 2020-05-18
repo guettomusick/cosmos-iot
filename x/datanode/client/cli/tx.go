@@ -63,7 +63,12 @@ func GetCmdSetOwner(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			msg := types.NewMsgSetOwner(datanode, owner, newOwner, args[3])
+			var name string
+			if len(args) > 3 {
+				name = args[3]
+			}
+
+			msg := types.NewMsgSetOwner(datanode, owner, newOwner, name)
 			err = msg.ValidateBasic()
 			if err != nil {
 				return err

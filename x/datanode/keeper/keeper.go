@@ -254,6 +254,14 @@ func (k DataNodeKeeper) AddRecord(ctx sdk.Context, address sdk.AccAddress, chann
 		if err == types.ErrInvalidDataRecord {
 			newDataRecord := types.NewDataRecord(address, channel, date)
 			dataRecord = &newDataRecord
+
+			// add datarecord hash to the datanode
+			datanode, err := k.GetDataNode(ctx, address)
+			if err != nil {
+				return err
+			}
+			datanode.Records = append(datanode.Records, hash)
+			k.SetDataNode(ctx, address, datanode)
 		} else {
 			return err
 		}

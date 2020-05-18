@@ -33,9 +33,9 @@ type DataNode struct {
 
 // Record holds a single record from the DataNode device
 type Record struct {
-	TimeStamp uint32  `json:"t"` // timestamp in seconds since epoch
-	Value     float32 `json:"v"` // numeric value of the record
-	Misc      string  `json:"m"` // miscellaneous data for other non numeric records
+	TimeStamp uint32 `json:"t"` // timestamp in seconds since epoch
+	Value     uint32 `json:"v"` // numeric value of the record
+	Misc      string `json:"m"` // miscellaneous data for other non numeric records
 }
 
 // implement fmt.Stringer
@@ -58,7 +58,7 @@ func NewDataNode(address sdk.AccAddress, owner sdk.AccAddress) DataNode {
 	return DataNode{
 		ID:    address,
 		Owner: owner,
-		Name:  string(address),
+		Name:  address.String(),
 	}
 }
 
@@ -90,8 +90,12 @@ func GetActualDataRecordHash(dataNode sdk.AccAddress, channel *NodeChannel) Data
 
 // GetDataRecordHash returns the hash key to be used for KVStore
 func GetDataRecordHash(dataNode sdk.AccAddress, channel *NodeChannel, date int64) DataRecordHash {
+	// use 1500000000 seconds as a safe time to detect if date is in seconds or days
+	if date > 1500000000 {
+		date = date / timeFrame
+	}
 	// Use days since epoch as daily time frame to group records
-	key := fmt.Sprintf("%s%s%s%d", string(dataNode), channel.ID, channel.Variable, date/timeFrame)
+	key := fmt.Sprintf("%s%s%s%d", dataNode.String(), channel.ID, channel.Variable, date)
 
 	return md5.Sum([]byte(key))
 }

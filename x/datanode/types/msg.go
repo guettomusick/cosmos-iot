@@ -51,7 +51,7 @@ func (msg MsgSetOwner) GetSignBytes() []byte {
 // GetSigners defines whose signature is required
 func (msg MsgSetOwner) GetSigners() []sdk.AccAddress {
 	if msg.DataNode.Equals(msg.Owner) {
-		return []sdk.AccAddress{msg.DataNode, msg.Owner}
+		return []sdk.AccAddress{msg.NewOwner, msg.DataNode}
 	}
 	return []sdk.AccAddress{msg.Owner}
 }
@@ -111,10 +111,10 @@ func (msg MsgUpdateChannels) GetSigners() []sdk.AccAddress {
 
 // NewRecord - record to be added to the DataRecord time frame
 type NewRecord struct {
-	NodeChannelID string  `json:"channel"`   // channel within the datanode
-	TimeStamp     uint32  `json:"timestamp"` // timestamp in seconds since epoch
-	Value         float32 `json:"value"`     // numeric value of the record
-	Misc          string  `json:"misc"`      // miscellaneous data for other non numeric records
+	NodeChannelID string `json:"channel"`   // channel within the datanode
+	TimeStamp     uint32 `json:"timestamp"` // timestamp in seconds since epoch
+	Value         uint32 `json:"value"`     // numeric value of the record
+	Misc          string `json:"misc"`      // miscellaneous data for other non numeric records
 }
 
 // MsgAddRecords - adds new records to the datarecord time frame

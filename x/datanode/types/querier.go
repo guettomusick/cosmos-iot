@@ -12,9 +12,9 @@ const (
 
 // QueryResRecords - queries result payload for a single record
 type QueryResRecords struct {
-	TimeStamp uint32  `json:"ts"`    // timestamp in seconds since epoch
-	Value     float32 `json:"value"` // numeric value of the record
-	Misc      string  `json:"misc"`  // miscellaneous data for other non numeric records
+	TimeStamp uint32 `json:"ts"`    // timestamp in seconds since epoch
+	Value     uint32 `json:"value"` // numeric value of the record
+	Misc      string `json:"misc"`  // miscellaneous data for other non numeric records
 }
 
 // QueryResRecordsList - queries result payload for datarecords within time frame

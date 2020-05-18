@@ -145,7 +145,7 @@ func NewQonicoIoTApp(
 	keys := sdk.NewKVStoreKeys(
 		bam.MainStoreKey, auth.StoreKey, staking.StoreKey,
 		supply.StoreKey, mint.StoreKey, distr.StoreKey, slashing.StoreKey,
-		gov.StoreKey, params.StoreKey, evidence.StoreKey, upgrade.StoreKey,
+		gov.StoreKey, params.StoreKey, evidence.StoreKey, upgrade.StoreKey, datanode.StoreKey,
 	)
 	tKeys := sdk.NewTransientStoreKeys(staking.TStoreKey, params.TStoreKey)
 

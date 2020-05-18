@@ -59,7 +59,7 @@ func (dfd DelegatedDeductFeeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, si
 
 	for _, sa := range signerAddrs {
 		dn, err := dfd.dataNodeKeeper.GetDataNode(ctx, sa)
-		if err != nil {
+		if err == nil {
 			dataNode = dn
 			break
 		}
