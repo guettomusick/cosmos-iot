@@ -1,5 +1,28 @@
 name: Sims
-on: [pull_request]
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: 'Which environment?'
+        options:
+        - dev
+        - uat
+        - prd
+        required: true
+        default: 'dev'
+      image:
+        description: 'Image tag to deploy'
+        default: 'latest'
+        required: true
+      deploy:
+        type: choice
+        description: 'Proceed? yes/no'
+        options:
+        - "yes"
+        - "no"
+        required: true
+        default: 'no'
 jobs:
   cleanup-runs:
     runs-on: ubuntu-latest
